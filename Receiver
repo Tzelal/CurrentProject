@@ -31,8 +31,7 @@ const int output4 = 14;
 //Anlık button durumu
 int buttonState = LOW;    
 
-// Structure example to receive data
-// Must match the sender structure
+// Sender modülü tarafından gönderilen bilgierin eşleşip eşleimediği kontrol edilir
 typedef struct struct_message {
   int id;
   float temp;
@@ -42,30 +41,26 @@ typedef struct struct_message {
 
 struct_message incomingReadings;
 
-
-
 JSONVar board;
 
 AsyncWebServer server(80);
 AsyncEventSource events("/events");
 
-// callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) { 
-  // Copies the sender mac address to a string
+  
   char macStr[18];
   Serial.print("Packet received from: ");
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
-           mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+  mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   Serial.println(macStr);
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  
   board["id"] = incomingReadings.id;
   board["temperature"] = incomingReadings.temp;
   board["humidity"] = incomingReadings.hum;
   board["readingId"] = String(incomingReadings.readingId);
   String jsonString = JSON.stringify(board);
-  events.send(jsonString.c_str(), "new_readings", millis());
-  
+   events.send(jsonString.c_str(), "new_readings", millis());
+
   Serial.printf("Board ID %u: %u bytes\n", incomingReadings.id, len);
   Serial.printf("t value: %4.2f \n", incomingReadings.temp);
   Serial.printf("h value: %4.2f \n", incomingReadings.hum);
@@ -77,14 +72,13 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML>
-<html lang="en" dir="ltr">
+<html>
 <head>
   <title>PAMUKKALE UNIVERSITESI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf-8">
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css">
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
     html {font-family: Arial; display: inline-block; text-align: center;}
@@ -204,10 +198,10 @@ const char index_html[] PROGMEM = R"rawliteral(
 <script>function toggleCheckbox(element) {
   var xhr = new XMLHttpRequest();
   if(element.checked){
-    xhr.open("GET", "/update?state=1", true);
+    xhr.open("GET", "/update?state=0", true);
     }
   else { 
-    xhr.open("GET", "/update?state=0", true); 
+    xhr.open("GET", "/update?state=1", true); 
     }
     xhr.send();
 }
@@ -215,10 +209,10 @@ const char index_html[] PROGMEM = R"rawliteral(
 function toggleCheckbox2(element) {
   var xhr = new XMLHttpRequest();
   if(element.checked){
-    xhr.open("GET", "/update?state2=2", true);
+    xhr.open("GET", "/update?state2=0", true);
     }
   else { 
-    xhr.open("GET", "/update?state2=0", true); 
+    xhr.open("GET", "/update?state2=2", true); 
     }
     xhr.send();
 }
@@ -226,10 +220,10 @@ function toggleCheckbox2(element) {
 function toggleCheckbox3(element) {
   var xhr = new XMLHttpRequest();
   if(element.checked){
-    xhr.open("GET", "/update?state3=3", true);
+    xhr.open("GET", "/update?state3=0", true);
     }
   else { 
-    xhr.open("GET", "/update?state3=0", true); 
+    xhr.open("GET", "/update?state3=3", true); 
     }
     xhr.send();
 }
@@ -237,42 +231,13 @@ function toggleCheckbox3(element) {
 function toggleCheckbox4(element) {
   var xhr = new XMLHttpRequest();
   if(element.checked){
-    xhr.open("GET", "/update?state4=4", true);
+    xhr.open("GET", "/update?state4=0", true);
     }
   else { 
-    xhr.open("GET", "/update?state4=0", true); 
+    xhr.open("GET", "/update?state4=4", true); 
     }
     xhr.send();
 }
-
-setInterval(function ( ) {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      var inputChecked;
-      var outputStateM;
-      
-      if( this.responseText == 1){ 
-        inputChecked = true;
-        outputStateM = "On";
-        
-      }
-      else { 
-        inputChecked = false;
-        outputStateM = "Off";
-        
-      }
-      document.getElementById("output").checked = inputChecked;
-      document.getElementById("outputState").innerHTML = outputStateM;
-
-      document.getElementById("giveTry").checked = inputChecked;
-    }
-  };
-  xhttp.open("GET", "/state", true);
-  xhttp.send();
-}, 1000 );
-
-
 
 var chartT = new Highcharts.Chart({
   chart:{ renderTo : 'chart-temperature' },
@@ -297,27 +262,6 @@ var chartT = new Highcharts.Chart({
   credits: { enabled: false }
   
 });
-
-
-
-setInterval(function ( ) {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      var x = (new Date()).getTime(),
-          y = parseFloat(this.responseText);
-      //console.log(this.responseText);
-      if(chartT.series[0].data.length > 40) {
-        chartT.series[0].addPoint([x, y], true, true, true);
-      } else {
-        chartT.series[0].addPoint([x, y], true, false, true);
-      }
-    }
-
-  };
-  xhttp.open("GET", "/temperature", true);
-  xhttp.send();
-}, 30000 ) ;
 
 function logoutButton() {
   var xhr = new XMLHttpRequest();
@@ -365,13 +309,13 @@ function initClock(){
 }
 
 
-
 if (!!window.EventSource) {
  var source = new EventSource('/events');
  
  source.addEventListener('open', function(e) {
   console.log("Events Connected");
  }, false);
+ 
  source.addEventListener('error', function(e) {
   if (e.target.readyState != EventSource.OPEN) {
     console.log("Events Disconnected");
@@ -389,6 +333,15 @@ if (!!window.EventSource) {
   document.getElementById("h"+obj.id).innerHTML = obj.humidity.toFixed(2);
   document.getElementById("rt"+obj.id).innerHTML = obj.readingId;
   document.getElementById("rh"+obj.id).innerHTML = obj.readingId;
+  var x = (new Date()).getTime(),
+  y = Number(obj.temperature.toFixed(2));
+  console.log(y);
+  if(chartT.series[0].data.length > 40) {
+    chartT.series[0].addPoint([x, y], true, true, true);
+  } 
+  else {
+    chartT.series[0].addPoint([x, y], true, false, true);
+  }
  }, false);
 }
 </script>
@@ -410,26 +363,26 @@ const char logout_html[] PROGMEM = R"rawliteral(
 
 
 void setup() {
-  // Initialize Serial Monitor
+  // Serial Monitör yüklenir
   Serial.begin(115200);
 
   //Esp32 çıkış pinlerinin ayarlanması
   pinMode(output, OUTPUT);
-  digitalWrite(output, LOW);
+  digitalWrite(output, HIGH);
 
   pinMode(output2, OUTPUT);
-  digitalWrite(output2, LOW);
+  digitalWrite(output2, HIGH);
 
   pinMode(output3, OUTPUT);
-  digitalWrite(output3, LOW);
+  digitalWrite(output3, HIGH);
 
   pinMode(output4, OUTPUT);
-  digitalWrite(output4, LOW);
+  digitalWrite(output4, HIGH);
 
-  // Set the device as a Station and Soft Access Point simultaneously
+  // Wifi modülünün modu ayarlanır 
   WiFi.mode(WIFI_AP_STA);
   
-  // Set device as a Wi-Fi Station
+  // Modül Wifi istasyonu olarak ayarlanır
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -440,22 +393,15 @@ void setup() {
   Serial.print("Wi-Fi Channel: ");
   Serial.println(WiFi.channel());
 
-  // Init ESP-NOW
+  // ESP-NOW protokolü yüklenir
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
   
-  // Once ESPNow is successfully Init, we will register for recv CB to
-  // get recv packer info
   esp_now_register_recv_cb(OnDataRecv);
 
-  /*route for root/web page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html);
-  });  */
-
-  // Route for root / web page
+  // Web sayfasına yönlendirilir  
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     if(!request->authenticate(http_username, http_password))
       return request->requestAuthentication();
@@ -481,7 +427,6 @@ void setup() {
     String inputMessage4;
     String inputParam4;
   
-    // GET input1 value on <ESP_IP>/update?state=<inputMessage>
     if (request->hasParam(PARAM_INPUT_1)) {
       inputMessage = request->getParam(PARAM_INPUT_1)->value();
       inputParam = PARAM_INPUT_1;
@@ -490,7 +435,6 @@ void setup() {
       Serial.println(inputMessage);
       request->send(200, "text/plain", "OK");
     }
-    // GET input1 value on <ESP_IP>/update?state=<inputMessage>
     if (request->hasParam(PARAM_INPUT_2)) {
       inputMessage2 = request->getParam(PARAM_INPUT_2)->value();
       inputParam2 = PARAM_INPUT_2;
@@ -499,7 +443,6 @@ void setup() {
       Serial.println(inputMessage2);
       request->send(200, "text/plain", "OK");
     }
-    // GET input1 value on <ESP_IP>/update?state=<inputMessage>
     if (request->hasParam(PARAM_INPUT_3)) {
       inputMessage3 = request->getParam(PARAM_INPUT_3)->value();
       inputParam3 = PARAM_INPUT_3;
@@ -508,7 +451,6 @@ void setup() {
       Serial.println(inputMessage3);
       request->send(200, "text/plain", "OK");
     }
-    // GET input1 value on <ESP_IP>/update?state=<inputMessage>
     if (request->hasParam(PARAM_INPUT_4)) {
       inputMessage4 = request->getParam(PARAM_INPUT_4)->value();
       inputParam4 = PARAM_INPUT_4;
@@ -519,15 +461,10 @@ void setup() {
     }
   });
 
-
-
-
   events.onConnect([](AsyncEventSourceClient *client){
     if(client->lastId()){
       Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
     }
-    // send event with message "hello!", id current millis
-    // and set reconnect delay to 1 second
     client->send("hello!", NULL, millis(), 10000);
   });
   server.addHandler(&events);
@@ -542,4 +479,3 @@ void loop() {
     lastEventTime = millis();
   }
 }
-
